@@ -26,7 +26,11 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 from collections import OrderedDict
-from cStringIO import StringIO
+try:
+	from cStringIO import StringIO
+except ImportError:
+	#python 3.x
+	from io import BytesIO
 
 from newsmangler.yenc import yEncode
 
@@ -40,7 +44,7 @@ class Article:
 		self._partnum = partnum
 		
 		self.headers = OrderedDict()
-		self.postfile = StringIO()
+		self.postfile = BytesIO()
 
 		self.__article_size = 0
 
@@ -52,17 +56,17 @@ class Article:
 
 		# Headers
 		for k, v in self.headers.items():
-			self.postfile.write('%s: %s\r\n' % (k, v))
+			self.postfile.write( ('%s: %s\r\n' % (k, v)).encode('utf-8') )
 		
-		self.postfile.write('\r\n')
+		self.postfile.write(b'\r\n')
 		
 		# yEnc start
 		line = '=ybegin part=%d total=%d line=128 size=%d name=%s\r\n' % (
 			self._partnum, self._fileinfo['parts'], self._fileinfo['filesize'], self._fileinfo['filename']
 		)
-		self.postfile.write(line)
+		self.postfile.write(line.encode('utf-8'))
 		line = '=ypart begin=%d end=%d\r\n' % (self._begin + 1, self._end)
-		self.postfile.write(line)
+		self.postfile.write(line.encode('utf-8'))
 		
 		# yEnc data
 		data = self._filewrap.read_part(self._begin, self._end)
@@ -70,10 +74,10 @@ class Article:
 
 		# yEnc end
 		line = '=yend size=%d part=%d pcrc32=%s\r\n' % (self._end - self._begin, self._partnum, partcrc)
-		self.postfile.write(line)
+		self.postfile.write(line.encode('utf-8'))
 		
 		# And done writing for now
-		self.postfile.write('.\r\n')
+		self.postfile.write('.\r\n'.encode('utf-8'))
 		self.__article_size = self.postfile.tell()
 		self.postfile.seek(0, 0)
 

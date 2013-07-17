@@ -34,7 +34,11 @@ import select
 import sys
 import time
 
-from cStringIO import StringIO
+try:
+	from cStringIO import StringIO
+except ImportError:
+	#python 3.x
+	from io import StringIO
 
 try:
     import xml.etree.cElementTree as ET
@@ -171,7 +175,7 @@ class PostMangler:
                     interval = time.time() - start
                     speed = self._bytes / interval / 1024
                     left = len(self._articles) + (len(self._conns) - len(self._idle))
-                    print '%d article(s) remaining - %.1fKB/s     \r' % (left, speed),
+                    print('%d article(s) remaining - %.1fKB/s     \r' % (left, speed))
                     sys.stdout.flush()
             
             # All done?

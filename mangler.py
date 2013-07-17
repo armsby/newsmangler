@@ -31,7 +31,7 @@
 
 import os
 import sys
-from ConfigParser import ConfigParser
+
 from optparse import OptionParser
 
 from newsmangler.common import ParseConfig
@@ -90,16 +90,16 @@ def main():
 			if os.path.isfile(arg):
 				postme.append(arg)
 			else:
-				print 'ERROR: "%s" does not exist or is not a file!' % (arg)
+				print('ERROR: "%s" does not exist or is not a file!' % (arg))
 	else:
 		for arg in args:
 			if os.path.isdir(arg):
 				postme.append(arg)
 			else:
-				print 'ERROR: "%s" does not exist or is not a file!' % (arg)
+				print('ERROR: "%s" does not exist or is not a file!' % (arg))
 	
 	if not postme:
-		print 'ERROR: no valid arguments provided on command line!'
+		print('ERROR: no valid arguments provided on command line!')
 		sys.exit(1)
 	
 	# Parse our configuration file
@@ -113,7 +113,7 @@ def main():
 		if '.' not in options.group:
 			newsgroup = conf['aliases'].get(options.group)
 			if not newsgroup:
-				print 'ERROR: group alias "%s" does not exist!' % (options.group)
+				print('ERROR: group alias "%s" does not exist!' % (options.group))
 				sys.exit(1)
 		else:
 			newsgroup = options.group

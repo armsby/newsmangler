@@ -40,6 +40,9 @@ HAVE_YENC_FRED = False
 # Translation tables
 YDEC_TRANS = ''.join([chr((i + 256 - 42) % 256) for i in range(256)])
 YENC_TRANS = ''.join([chr((i + 42) % 256) for i in range(256)])
+YENC_TRANSb = YENC_TRANS.encode('utf-8')
+
+asciib = (''.join(map(chr, range(256)))).encode('utf-8')
 
 YDEC_MAP = {}
 for i in range(256):
@@ -69,17 +72,31 @@ def yEncode_C(postfile, data):
 	if not yenced.endswith('\r\n'):
 		postfile.write('\r\n')
 	
-	return '%08x' % ((tempcrc ^ -1) & 2**32L - 1)
+	return '%08x' % ((tempcrc ^ -1) & 2**32 - 1)
 
 def yEncode_Python(postfile, data, linelen=128):
 	'Encode data into yEnc format'
 	
-	translated = data.translate(YENC_TRANS)
+	print("type of data: %s" % type(data))
+	if not isinstance(data, str):
+		#matches in python 3.x
+		#transTable = str.maketrans( \
+		#	''.join(map(chr, range(256))), YENC_TRANS)
+		
+		transTable = bytes.maketrans(asciib, YENC_TRANSb)
+		translated = data.translate(transTable)
+		
+		# escape {=, NUL, LF, CR}
+		for i in (61, 0, 10, 13):
+			escapeChar = b'=' + chr(i + 64).encode('utf-8')
+			translated = translated.replace(chr(i).encode('utf-8'), escapeChar)
+	else:
+		translated = data.translate(YENC_TRANS)
 	
-	# escape =, NUL, LF, CR
-	for i in (61, 0, 10, 13):
-		j = '=%c' % (i + 64)
-		translated = translated.replace(chr(i), j)
+		# escape {=, NUL, LF, CR}
+		for i in (61, 0, 10, 13):
+			j = '=%c' % (i + 64)
+			translated = translated.replace(chr(i), j)
 	
 	# split the rest of it into lines
 	lines = []
@@ -111,8 +128,9 @@ def yEncode_Python(postfile, data, linelen=128):
 			elif line[-1] in ('\x09', '\x20'):
 				line = '%s=%c' % (line[:-1], ord(line[-1]) + 64)
 		
+		# FIXME: doesn't follow the "Command Query Separation" -> separate from function
 		postfile.write(line)
-		postfile.write('\r\n')
+		postfile.write(b'\r\n')
 		start = end
 	
 	return CRC32(data)
@@ -149,7 +167,7 @@ def yEncMode():
 # ---------------------------------------------------------------------------
 # Make a human readable CRC32 value
 def CRC32(data):
-	return '%08x' % (zlib.crc32(data) & 2**32L - 1)
+	return '%08x' % (zlib.crc32(data) & 2**32 - 1)
 
 # Come up with a 'safe' filename
 def SafeFilename(filename):

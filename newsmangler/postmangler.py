@@ -258,9 +258,9 @@ class PostMangler:
             # Build a subject
             real_filename = os.path.split(filename)[1]
             
-            temp = '%%0%sd' % (len(str(len(files))))
-            filenum = temp % (n)
-            temp = '%%0%sd' % (len(str(parts)))
+            temp = '%%0%sd' % len(str(len(files)))
+            filenum = temp % n
+            temp = '%%0%sd' % len(str(parts))
             subject = '%s [%s/%d] - "%s" yEnc (%s/%d)' % (
                 post_title, filenum, len(goodfiles), real_filename, temp, parts
             )

@@ -86,21 +86,22 @@ def yEncode_C(postfile, data):
 char_to_yenc_byte = lambda char, base=64: ((char + base) % 256).to_bytes(1, byteorder='big')
 
 def _yEncode_escape(data):
-	if (version_info > (3,0)):		
-		transTable = bytes.maketrans(NOENC_TRANS, YENC_TRANS2)
-		translated = data.translate(transTable)
-		
-		# escape {=, NUL, LF, CR}
-		for i in (61, 0, 10, 13):
-			escapeChar = b'=' + char_to_yenc_byte(i)
-			translated = translated.replace(i.to_bytes(1, byteorder='big'), escapeChar)
-	else:
+	if isinstance(data, str):		
 		translated = data.translate(YENC_TRANS)
 	
 		# escape {=, NUL, LF, CR}
 		for i in (61, 0, 10, 13):
 			j = '=%c' % (i + 64)
 			translated = translated.replace(chr(i), j)
+	else:
+		#python3 behavoral
+		transTable = bytes.maketrans(NOENC_TRANS, YENC_TRANS2)
+		translated = data.translate(transTable)
+		
+		charsToBeEscaped = (ord('='), ord('\0'), ord('\n'), ord('\r'))
+		for eachChar in charsToBeEscaped:
+			escapeChar = b'=' + char_to_yenc_byte(eachChar, 64)
+			translated = translated.replace((eachChar).to_bytes(1, byteorder='big'), escapeChar)
 	
 	return translated
 
@@ -120,7 +121,7 @@ def yEncode_Python3(postfile, data, maxLineLen=128):
 		
 		# FIXME: line consisting entirely of a space/tab
 		if start == end - 1:
-			if line[0] in (0x09, 0x20):
+			if line[0] in (ord('\t'), ord(' ')):
 				line = b'=' + char_to_yenc_byte(line[0])
 		else:
 			# escape tab/space/period at the start of a line

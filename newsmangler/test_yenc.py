@@ -30,13 +30,15 @@ class TestYencoding(unittest.TestCase):
 		## yEnd-encoded '0...9'
 		#'Z[\\]^_`abc\r\n'
 		
-	def test_yEncode_escape(self):
-		if(version_info > (3,0)):
-			self.assertEqual(b'r\x8f\x96\x96\x99J\xa1\x99\x9c\x96\x8e', 
-				_yEncode_escape(b'Hello world') )
-		else:
-			self.assertEqual('r\x8f\x96\x96\x99J\xa1\x99\x9c\x96\x8e', 
-				_yEncode_escape('Hello world') )
+	def test_yEncode_escape_basic(self):
+		self.assertEqual(b'r\x8f\x96\x96\x99J\xa1\x99\x9c\x96\x8e', 
+			_yEncode_escape(b'Hello world') )
+		self.assertEqual('r\x8f\x96\x96\x99J\xa1\x99\x9c\x96\x8e', 
+			_yEncode_escape('Hello world') )
+		
+	def test_yEncode_escape_specialChar(self):
+		self.assertEqual(b'\x3d\x7d',
+			_yEncode_escape(b'\x13') )
 		
 	def test_yEncode_CRC(self):
 		self.assertEqual('8bd69e52', yEncode_Python3(self.postFile, b"Hello world", 11))

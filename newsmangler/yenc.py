@@ -42,7 +42,15 @@ YDEC_TRANS = ''.join([chr((i + 256 - 42) % 256) for i in range(256)])
 YENC_TRANS = ''.join([chr((i + 42) % 256) for i in range(256)])
 YENC_TRANSb = YENC_TRANS.encode('utf-8')
 
-asciib = (''.join(map(chr, range(256)))).encode('utf-8')
+## only possible for python3
+YENC_TRANS2 = b''
+for i in range(256):
+	YENC_TRANS2 += ((i + 42) % 256).to_bytes(1, byteorder='big')
+NOENC_TRANS = b''
+for i in range(256):
+	NOENC_TRANS += i.to_bytes(1, byteorder='big')
+
+#yenc_trans42 = string.join(map(lambda x: chr((x+42) % 256), range(256)), "")
 
 YDEC_MAP = {}
 for i in range(256):
@@ -74,22 +82,18 @@ def yEncode_C(postfile, data):
 	
 	return '%08x' % ((tempcrc ^ -1) & 2**32 - 1)
 
-def yEncode_Python(postfile, data, linelen=128):
-	'Encode data into yEnc format'
-	
-	print("type of data: %s" % type(data))
-	if not isinstance(data, str):
-		#matches in python 3.x
-		#transTable = str.maketrans( \
-		#	''.join(map(chr, range(256))), YENC_TRANS)
-		
-		transTable = bytes.maketrans(asciib, YENC_TRANSb)
+
+char_to_yenc_byte = lambda char, base=64: (char + base).to_bytes(1, byteorder='big')
+
+def _yEncode_escape(data):
+	if not isinstance(data, str):		
+		transTable = bytes.maketrans(NOENC_TRANS, YENC_TRANS2)
 		translated = data.translate(transTable)
 		
 		# escape {=, NUL, LF, CR}
 		for i in (61, 0, 10, 13):
-			escapeChar = b'=' + chr(i + 64).encode('utf-8')
-			translated = translated.replace(chr(i).encode('utf-8'), escapeChar)
+			escapeChar = b'=' + char_to_yenc_byte(i)
+			translated = translated.replace(i.to_bytes(1, byteorder='big'), escapeChar)
 	else:
 		translated = data.translate(YENC_TRANS)
 	
@@ -98,20 +102,25 @@ def yEncode_Python(postfile, data, linelen=128):
 			j = '=%c' % (i + 64)
 			translated = translated.replace(chr(i), j)
 	
+	return translated
+
+def yEncode_Python(postfile, data, maxLineLen=128):
+	'Encode data into yEnc format'
+	
+	translated = _yEncode_escape(data)
+	
 	# split the rest of it into lines
-	lines = []
-	start = 0
-	end = 0
+	start = end = 0
 	datalen = len(translated)
 	
 	while end < datalen:
-		end = min(datalen, start + linelen)
+		end = min(datalen, start + maxLineLen)
 		line = translated[start:end]
 		
 		# FIXME: line consisting entirely of a space/tab
 		if start == end - 1:
 			if line[0] in ('\x09', '\x20'):
-				line = '=%c' % (ord(line[0]) + 64)
+				line = b'=' + char_to_yenc_byte(line[0])
 		else:
 			# escape tab/space/period at the start of a line
 			if line[0] in ('\x09', '\x20'):
@@ -138,8 +147,9 @@ def yEncode_Python(postfile, data, linelen=128):
 # ---------------------------------------------------------------------------
 
 YSPLIT_RE = re.compile(r'(\S+)=')
+
+# Split a =y* line into key/value pairs
 def ySplit(line):
-	'Split a =y* line into key/value pairs'
 	fields = {}
 	
 	parts = YSPLIT_RE.split(line)[1:]

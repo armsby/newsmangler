@@ -77,8 +77,16 @@ class TestYencoding(unittest.TestCase):
 	def test_yEncoding_Python(self):
 		yEncode_Python(self.postFile, b"Hello world", 11)
 		
-		print(self.postFile.getvalue())
+		print( repr(self.postFile.getvalue()) )
+		## yEnc-encoded 'Hello world'
 		#b'r\x8f\x96\x96\x99J\xa1\x99\x9c\x96\x8e\r\n'
+		
+		#>>> yEncode_Python(postfile, "0123456789", 11)
+		#'a684c7c6'
+		#>>> 
+		#>>> postfile.getvalue()
+		## yEnd-encoded '0...9'
+		#'Z[\\]^_`abc\r\n'
 		
 	def test_yEncode_CRC(self):
 		self.assertEqual('8bd69e52', yEncode_Python(self.postFile, b"Hello world", 11))

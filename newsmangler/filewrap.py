@@ -61,7 +61,7 @@ class FileWrap:
 		# If this was the last part we should close the file
 		self._parts -= 1
 		if self._parts == 0:
-			self._close_file()
+			self._closeFile()
 
 		# Return the data
 		return data

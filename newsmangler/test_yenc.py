@@ -3,7 +3,7 @@ import unittest
 from sys import version_info
 	
 from yenc import *
-from yenc import _yEncode_escape
+from yenc import _yenc_encodeEscaped
 
 class TestYencoding(unittest.TestCase):
 	def setUp(self):
@@ -30,15 +30,15 @@ class TestYencoding(unittest.TestCase):
 		## yEnd-encoded '0...9'
 		#'Z[\\]^_`abc\r\n'
 		
-	def test_yEncode_escape_basic(self):
+	def test_yenc_encodeEscaped_basic(self):
 		self.assertEqual(b'r\x8f\x96\x96\x99J\xa1\x99\x9c\x96\x8e', 
-			_yEncode_escape(b'Hello world') )
+			_yenc_encodeEscaped(b'Hello world') )
 		self.assertEqual('r\x8f\x96\x96\x99J\xa1\x99\x9c\x96\x8e', 
-			_yEncode_escape('Hello world') )
+			_yenc_encodeEscaped('Hello world') )
 		
-	def test_yEncode_escape_specialChar(self):
+	def test_yenc_encodeEscaped_specialChar(self):
 		self.assertEqual(b'\x3d\x7d',
-			_yEncode_escape(b'\x13') )
+			_yenc_encodeEscaped(b'\x13') )
 		
 	def test_yEncode_CRC(self):
 		self.assertEqual('8bd69e52', yEncode_Python3(self.postFile, b"Hello world", 11))

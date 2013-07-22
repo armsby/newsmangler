@@ -85,7 +85,7 @@ def yEncode_C(postfile, data):
 
 char_to_yenc_byte = lambda char, base=64: ((char + base) % 256).to_bytes(1, byteorder='big')
 
-def _yEncode_escape(data):
+def _yenc_encodeEscaped(data):
 	if isinstance(data, str):		
 		translated = data.translate(YENC_TRANS)
 	
@@ -105,15 +105,12 @@ def _yEncode_escape(data):
 	
 	return translated
 
-def yEncode_Python3(postfile, data, maxLineLen=128):
-	'Encode data into yEnc format'
-	
-	translated = _yEncode_escape(data)
+def _yenc_splitIntoLines(translated, maxLineLen=128):
+	lineList = []
 	
 	# split the rest of it into lines
 	start = end = 0
 	datalen = len(translated)
-	
 	
 	while end < datalen:
 		end = min(datalen, start + maxLineLen)
@@ -124,28 +121,36 @@ def yEncode_Python3(postfile, data, maxLineLen=128):
 			if line[0] in (ord('\t'), ord(' ')):
 				line = b'=' + char_to_yenc_byte(line[0])
 		else:
-			# escape tab/space/period at the start of a line
-			if line[0] in (0x09, 0x20):
+			if line[0] in (ord('\t'), ord(' ')):
 				line = b'=' + char_to_yenc_byte(line[0],0) + line[1:-1]
 				end -= 1
-			elif line[0] == 0x2e:
+			elif line[0] == ord('.'):
 				line = b'.' + line
 			
-			## Handle end of current line
-			if line[-1] == ord('='):
-				# escaped char on the end of the line
-				# add the real char too
+			endOfLine_byte = line[-1]
+			if endOfLine_byte == ord('='):
+				# escaped char occurrence at the end of the line
+				# add the real char from translated buffer
 				line += translated[end]
 				end += 1
-			# escape tab/space at the end of a line
-			elif line[-1] in (0x09, 0x20):
+			elif endOfLine_byte in (ord('\t'), ord(' ')):
 				line = line[:-1] + b'=' + char_to_yenc_byte(line[-1],0)
-				line = '%s=%c' % (line[:-1], ord(line[-1]) + 64)
 		
 		# FIXME: doesn't follow the "Command Query Separation" -> separate from function
-		postfile.write(line)
-		postfile.write(b'\r\n')
 		start = end
+		lineList.append(line)
+		
+	return lineList
+
+def yEncode_Python3(postfile, data, maxLineLen=128):
+	'Encode data into yEnc format'
+	
+	translated = _yenc_encodeEscaped(data)
+	lineList = _yenc_splitIntoLines(translated, maxLineLen)
+	
+	for eachLine in lineList:
+		postfile.write(eachLine)
+		postfile.write(b'\r\n')
 	
 	return CRC32(data)
 

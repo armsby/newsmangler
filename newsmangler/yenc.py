@@ -29,6 +29,7 @@
 
 import re
 import zlib
+from sys import version_info
 
 # ---------------------------------------------------------------------------
 
@@ -40,15 +41,14 @@ HAVE_YENC_FRED = False
 # Translation tables
 YDEC_TRANS = ''.join([chr((i + 256 - 42) % 256) for i in range(256)])
 YENC_TRANS = ''.join([chr((i + 42) % 256) for i in range(256)])
-YENC_TRANSb = YENC_TRANS.encode('utf-8')
 
-## only possible for python3
-YENC_TRANS2 = b''
-for i in range(256):
-	YENC_TRANS2 += ((i + 42) % 256).to_bytes(1, byteorder='big')
-NOENC_TRANS = b''
-for i in range(256):
-	NOENC_TRANS += i.to_bytes(1, byteorder='big')
+if (version_info > (3,0)):
+	YENC_TRANS2 = b''
+	for i in range(256):
+		YENC_TRANS2 += ((i + 42) % 256).to_bytes(1, byteorder='big')
+	NOENC_TRANS = b''
+	for i in range(256):
+		NOENC_TRANS += i.to_bytes(1, byteorder='big')
 
 #yenc_trans42 = string.join(map(lambda x: chr((x+42) % 256), range(256)), "")
 
@@ -83,10 +83,10 @@ def yEncode_C(postfile, data):
 	return '%08x' % ((tempcrc ^ -1) & 2**32 - 1)
 
 
-char_to_yenc_byte = lambda char, base=64: (char + base).to_bytes(1, byteorder='big')
+char_to_yenc_byte = lambda char, base=64: ((char + base) % 256).to_bytes(1, byteorder='big')
 
 def _yEncode_escape(data):
-	if not isinstance(data, str):		
+	if (version_info > (3,0)):		
 		transTable = bytes.maketrans(NOENC_TRANS, YENC_TRANS2)
 		translated = data.translate(transTable)
 		
@@ -104,7 +104,7 @@ def _yEncode_escape(data):
 	
 	return translated
 
-def yEncode_Python(postfile, data, maxLineLen=128):
+def yEncode_Python3(postfile, data, maxLineLen=128):
 	'Encode data into yEnc format'
 	
 	translated = _yEncode_escape(data)
@@ -113,28 +113,32 @@ def yEncode_Python(postfile, data, maxLineLen=128):
 	start = end = 0
 	datalen = len(translated)
 	
+	
 	while end < datalen:
 		end = min(datalen, start + maxLineLen)
 		line = translated[start:end]
 		
 		# FIXME: line consisting entirely of a space/tab
 		if start == end - 1:
-			if line[0] in ('\x09', '\x20'):
+			if line[0] in (0x09, 0x20):
 				line = b'=' + char_to_yenc_byte(line[0])
 		else:
 			# escape tab/space/period at the start of a line
-			if line[0] in ('\x09', '\x20'):
-				line = '=%c%s' % (ord(line[0]) + 64, line[1:-1])
+			if line[0] in (0x09, 0x20):
+				line = b'=' + char_to_yenc_byte(line[0],0) + line[1:-1]
 				end -= 1
-			elif line[0] == '\x2e':
-				line = '.%s' % (line)
+			elif line[0] == 0x2e:
+				line = b'.' + line
 			
-			# escaped char on the end of the line
-			if line[-1] == '=':
+			## Handle end of current line
+			if line[-1] == ord('='):
+				# escaped char on the end of the line
+				# add the real char too
 				line += translated[end]
 				end += 1
 			# escape tab/space at the end of a line
-			elif line[-1] in ('\x09', '\x20'):
+			elif line[-1] in (0x09, 0x20):
+				line = line[:-1] + b'=' + char_to_yenc_byte(line[-1],0)
 				line = '%s=%c' % (line[:-1], ord(line[-1]) + 64)
 		
 		# FIXME: doesn't follow the "Command Query Separation" -> separate from function
@@ -198,8 +202,8 @@ except ImportError:
 		pass
 	else:
 		HAVE_PSYCO = True
-		psyco.bind(yEncode_Python)
-	yEncode = yEncode_Python
+		psyco.bind(yEncode_Python3)
+	yEncode = yEncode_Python3
 else:
 	HAVE_YENC = True
 	HAVE_YENC_FRED = ('Freddie mod' in _yenc.__doc__)

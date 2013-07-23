@@ -35,19 +35,21 @@ class TestYencoding(unittest.TestCase):
 		#>Implementors who write directly to a TCP stream will care about the
 		#doubling of dots in the first column - or also encode a DOT in the 
 		#first column.
-		self.assertEqual([b'asdf', b'asdf'], 
-			_yenc_splitIntoLines(b'asdfasdf', 4) )
-		self.assertEqual(['asdf', 'asdf'], 
-			_yenc_splitIntoLines('asdfasdf', 4) )
+		result = _yenc_splitIntoLines(b'asdfasdf', 4)
+		self.assertEqual([b'asdf', b'asdf'], result)
 		
-		self.assertEqual([b'asdf=a', b'sdf'], 
-			_yenc_splitIntoLines(b'asdf=asdf', 5) )
+		result = _yenc_splitIntoLines('asdfasdf', 4)
+		self.assertEqual(['asdf', 'asdf'], result )
 		
-		self.assertEqual([b'=\x49'], 
-			_yenc_splitIntoLines(b'\t', 100) )
+		result = _yenc_splitIntoLines(b'asd=fasdf', 4) 
+		self.assertEqual([b'asd=f', b'asdf'], result)
 		
-		self.assertEqual([b'..sd=\x49'], 
-			_yenc_splitIntoLines(b'.sd\t', 4) )
+		#tab at the begin/end of line
+		result = _yenc_splitIntoLines(b'\t', 100)
+		self.assertEqual([b'=\x49'], result )
+		
+		result = _yenc_splitIntoLines(b'.sd\t', 4) 
+		self.assertEqual([b'..sd=\x49'], result )
 	
 if __name__ == '__main__':
     unittest.main(verbosity=3)

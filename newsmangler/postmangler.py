@@ -98,8 +98,11 @@ class PostMangler:
     # Connect all of our connections
     def connect(self):
         for i in range(self.conf['server']['connections']):
-            conn = asyncnntp.asyncNNTP(self, i, self.conf['server']['hostname'],
-                self.conf['server']['port'], None, self.conf['server']['username'],
+            conn = asyncnntp.asyncNNTP(self, i, 
+            	self.conf['server']['hostname'],
+                self.conf['server']['port'], 
+                None, 
+                self.conf['server']['username'],
                 self.conf['server']['password'],
             )
             conn.do_connect()

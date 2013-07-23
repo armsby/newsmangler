@@ -39,7 +39,7 @@ from newsmangler.postmangler import PostMangler
 
 # ---------------------------------------------------------------------------
 
-def main():
+def parseCmdLineOption():
 	# Parse our command line options
 	parser = OptionParser(usage='usage: %prog [options] dir1 dir2 ... dirN')
 	parser.add_option('-c', '--config',
@@ -48,7 +48,8 @@ def main():
 	)
 	parser.add_option('-f', '--files',
 		dest='files',
-		help='Assume all arguments are filenames instead of directories, and use SUBJECT as the base subject',
+		help='Assume all arguments are filenames instead of directories, \
+			and use SUBJECT as the base subject',
 		metavar='SUBJECT',
 	)
 	parser.add_option('-g', '--group',
@@ -80,6 +81,12 @@ def main():
 	if not args:
 		parser.print_help()
 		sys.exit(1)
+		
+	return (options, args)
+	
+
+def main():
+	(options, args) = parseCmdLineOption()
 	
 	# Make sure at least one of the args exists
 	postme = []

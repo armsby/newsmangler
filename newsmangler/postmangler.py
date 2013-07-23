@@ -346,13 +346,13 @@ class PostMangler:
                     'subject': subject,
                 }
             )
-
+            
             # newsgroups
             groups = ET.SubElement(f, 'groups')
             for newsgroup in self.newsgroup.split(','):
                 group = ET.SubElement(groups, 'group')
                 group.text = newsgroup
-
+            
             # segments
             segments = ET.SubElement(f, 'segments')
             temp = [(m._partnum, m, article_size) for m, article_size in msgids]
@@ -366,7 +366,7 @@ class PostMangler:
                 )
                 segment.text = str(article.headers['Message-ID'][1:-1])
 
-        with open(filename, 'w') as nzbfile:
+        with open(filename, 'wb') as nzbfile:
             ET.ElementTree(root).write(nzbfile, xml_declaration=True)
 
         self.logger.info('End generation of %s', filename)

@@ -85,6 +85,7 @@ def yEncode_C(postfile, data):
 
 char_to_yenc_byte = lambda char, base=64: ((char + base) % 256).to_bytes(1, byteorder='big')
 
+
 def _yenc_encodeEscaped(data):
 	if isinstance(data, str):		
 		translated = data.translate(YENC_TRANS)
@@ -122,7 +123,7 @@ def _yenc_splitIntoLines(translated, maxLineLen=128):
 				line = b'=' + char_to_yenc_byte(line[0])
 		else:
 			if line[0] in (ord('\t'), ord(' ')):
-				line = b'=' + char_to_yenc_byte(line[0],0) + line[1:-1]
+				line = b'=' + char_to_yenc_byte(line[0]) + line[1:-1]
 				end -= 1
 			elif line[0] == ord('.'):
 				line = b'.' + line
@@ -131,10 +132,10 @@ def _yenc_splitIntoLines(translated, maxLineLen=128):
 			if endOfLine_byte == ord('='):
 				# escaped char occurrence at the end of the line
 				# add the real char from translated buffer
-				line += translated[end]
+				line += char_to_yenc_byte(translated[end],0)
 				end += 1
 			elif endOfLine_byte in (ord('\t'), ord(' ')):
-				line = line[:-1] + b'=' + char_to_yenc_byte(line[-1],0)
+				line = line[:-1] + b'=' + char_to_yenc_byte(line[-1])
 		
 		# FIXME: doesn't follow the "Command Query Separation" -> separate from function
 		start = end

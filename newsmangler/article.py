@@ -27,7 +27,7 @@
 
 from collections import OrderedDict
 try:
-	from cStringIO import StringIO
+	from cStringIO import StringIO as BytesIO
 except ImportError:
 	#python 3.x
 	from io import BytesIO

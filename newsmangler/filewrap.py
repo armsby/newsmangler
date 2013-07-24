@@ -36,7 +36,11 @@ class FileWrap:
 		
 		self._file = None
 
-		self.logger = logging.getLogger('mangler')
+		self.logger = logging.getLogger('fileWrapper')
+		
+	def __del__(self):
+		self._closeFile()
+
 
 	def read_part(self, begin, end):
 		self.logger.debug('%s read_part %d %d', self._filepath, begin, end)

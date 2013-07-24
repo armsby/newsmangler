@@ -57,13 +57,13 @@ class PostMangler:
         self._idle = []
         
         # Create our logger
-        self.logger = logging.getLogger('mangler')
+        self.logger = logging.getLogger('postMangler')
         handler = logging.StreamHandler()
         
         formatStr = ''
         if debug:
             self.logger.setLevel(logging.DEBUG)
-            formatStr = '%(asctime)s [%(levelname)-5s] %(name)-10s %(message)s'
+            formatStr = '%(asctime)s [%(levelname)-5s] %(name)-11s %(message)s'
         else:
             self.logger.setLevel(logging.INFO)
             formatStr = '%(asctime)s [%(levelname)-5s] %(message)s'

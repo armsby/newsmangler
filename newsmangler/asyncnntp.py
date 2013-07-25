@@ -59,7 +59,7 @@ class asyncNNTP(asyncore.dispatcher):
     def __init__(self, parent, connid, host, port, bindto, username, password):
         asyncore.dispatcher.__init__(self)
         
-        self.logger = logging.getLogger('mangler')
+        self.logger = logging.getLogger('asyncCores')
         
         self.parent = parent
         self.connid = connid

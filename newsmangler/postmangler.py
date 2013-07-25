@@ -61,15 +61,20 @@ class PostMangler:
         self._idle = []
         
         # Create our logger
-        self.logger = logging.getLogger('mangler')
+        self.logger = logging.getLogger('postMangler')
         handler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+        
+        formatStr = ''
         if debug:
             self.logger.setLevel(logging.DEBUG)
+            formatStr = '%(asctime)s [%(levelname)-5s] %(name)-11s %(message)s'
         else:
             self.logger.setLevel(logging.INFO)
+            formatStr = '%(asctime)s [%(levelname)-5s] %(message)s'
+        
+        formatter = logging.Formatter(formatStr)
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
         
         # Create a poll object for async bits to use. If the user doesn't have
         # poll, we're going to have to fake it.

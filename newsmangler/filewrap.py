@@ -36,7 +36,7 @@ class FileWrap:
 		
 		self._file = None
 
-		self.logger = logging.getLogger('mangler')
+		self.logger = logging.getLogger('fileWrapper')
 		
 	def __del__(self):
 		self._closeFile()

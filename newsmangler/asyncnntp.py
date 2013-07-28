@@ -28,7 +28,6 @@
 "A basic NNTP client using asyncore"
 
 import asyncore
-import errno
 import logging
 import re
 import select

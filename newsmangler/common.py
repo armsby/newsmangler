@@ -27,10 +27,11 @@
 
 """Various miscellaneous useful functions."""
 
-NM_VERSION = '0.1.1git'
+NM_VERSION = '0.1.3git'
 
 import os
 import sys
+import logging
 
 try:
 	#Python version <3.x
@@ -38,51 +39,73 @@ try:
 except ImportError:
 	from configparser import ConfigParser
 
+def setupLogger(debug=False):
+	logHandler = logging.getLogger() # gives us the "root" handler
+
+	logHandler.setLevel(logging.DEBUG if debug else logging.INFO)
+	
+	debug_formatStr = '%(asctime)s [%(levelname)-5s][%(name)-11s] %(message)s'
+	info_formatStr = '%(asctime)s [%(levelname)-5s] %(message)s'
+	formatter = logging.Formatter(debug_formatStr if debug else info_formatStr)
+	
+	streamHandler = logging.StreamHandler()
+	streamHandler.setFormatter(formatter)
+	
+	logHandler.addHandler(streamHandler)
+	
+
 # ---------------------------------------------------------------------------
 # Parse our configuration file
-def ParseConfig(cfgfile='~/.newsmangler.conf'):
-	configfile = os.path.expanduser(cfgfile)
-	if not os.path.isfile(configfile):
-		print('ERROR: config file "%s" is missing!' % (configfile))
+def ParseManglerConfig(cfgfile='~/.newsmangler.conf'):
+	logger = logging.getLogger('common')
+	
+	configFile = os.path.expanduser(cfgfile)
+	if not os.path.isfile(configFile):
+		logger.error('Config file "%s" is missing!' % (configFile))
 		sys.exit(1)
 	
+	logger.info('Using config file: "%s"' % configFile)
+	
 	c = ConfigParser()
-	c.read(configfile)
-	conf = {}
+	c.read(configFile)
+	manglerConfDict = {}
 	for section in c.sections():
-		conf[section] = {}
+		manglerConfDict[section] = {}
 		for option in c.options(section):
 			v = c.get(section, option)
 			if v.isdigit():
 				v = int(v)
-			conf[section][option] = v
+			manglerConfDict[section][option] = v
 	
-	return conf
+	return manglerConfDict
+
 
 # ---------------------------------------------------------------------------
 # Come up with a 'safe' filename
 def SafeFilename(filename):
 	safe_filename = os.path.basename(filename)
+	
+	#@todo: replace through re.sub(r'[\s\t]', '', filename)
 	for char in [' ', "\\", '|', '/', ':', '*', '?', '<', '>']:
 		safe_filename = safe_filename.replace(char, '_')
 	return safe_filename
 
 # ---------------------------------------------------------------------------
 # Return a nicely formatted size
-MB = 1024.0 * 1024
-def NiceSize(bytes):
-        if bytes < 1024:
-                return '%dB' % (bytes)
-        elif bytes < MB:
-                return '%.1fKB' % (bytes / 1024.0)
-        else:
-                return '%.1fMB' % (bytes / MB)
+MB = 1024.0 ** 2
+def NiceSize(byteValue):
+	if byteValue < 1024:
+		return '%dB' % (byteValue)
+	elif byteValue < MB:
+		return '%.1fKB' % (byteValue / 1024.0)
+	else:
+		return '%.1fMB' % (byteValue / MB)
 
 # Return a nicely formatted time
 def NiceTime(seconds):
-        hours, left = divmod(seconds, 60 * 60)
-        mins, secs = divmod(left, 60)
-        if hours:
-                return '%dh %dm %ds' % (hours, mins, secs)
-        else:
-                return '%dm %ds' % (mins, secs)
+	hours, left = divmod(seconds, 60 ** 2)
+	mins, secs = divmod(left, 60)
+	if hours:
+		return '%dh %dm %ds' % (hours, mins, secs)
+	else:
+		return '%dm %ds' % (mins, secs)

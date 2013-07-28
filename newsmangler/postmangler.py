@@ -35,15 +35,15 @@ import sys
 import time
 
 try:
-	from cStringIO import StringIO
+    from cStringIO import StringIO
 except ImportError:
-	#python 3.x
+	# python 3.x
 	from io import StringIO
 
 try:
-    import xml.etree.cElementTree as ET
+	import xml.etree.cElementTree as ET
 except:
-    import xml.etree.ElementTree as ET
+	import xml.etree.ElementTree as ET
 
 from newsmangler import asyncnntp
 from newsmangler import yenc
@@ -54,37 +54,23 @@ from newsmangler.filewrap import FileWrap
 # ---------------------------------------------------------------------------
 
 class PostMangler:
-    def __init__(self, conf, debug=False):
+    def __init__(self, conf, debug):
         self.conf = conf
         
         self._conns = []
         self._idle = []
         
-        # Create our logger
         self.logger = logging.getLogger('postMangler')
-        handler = logging.StreamHandler()
-        
-        formatStr = ''
-        if debug:
-            self.logger.setLevel(logging.DEBUG)
-            formatStr = '%(asctime)s [%(levelname)-5s] %(name)-11s %(message)s'
-        else:
-            self.logger.setLevel(logging.INFO)
-            formatStr = '%(asctime)s [%(levelname)-5s] %(message)s'
-        
-        formatter = logging.Formatter(formatStr)
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
         
         # Create a poll object for async bits to use. If the user doesn't have
         # poll, we're going to have to fake it.
         try:
             asyncore.poller = select.poll()
-            self.logger.info('Using poll() for sockets')
+            self.logger.debug('Using poll() for sockets')
         except AttributeError:
             from newsmangler.fakepoll import FakePoll
             asyncore.poller = FakePoll()
-            self.logger.info('Using FakePoll() for sockets')
+            self.logger.debug('Using FakePoll() for sockets')
 
         self.conf['posting']['skip_filenames'] = self.conf['posting'].get('skip_filenames', '').split()
         
@@ -99,7 +85,6 @@ class PostMangler:
         # Some sort of useful logging junk about which yEncode we're using
         self.logger.info('Using %s module for yEnc', yenc.yEncMode())
     
-    # -----------------------------------------------------------------------
     # Connect all of our connections
     def connect(self):
         for i in range(self.conf['server']['connections']):
@@ -113,7 +98,6 @@ class PostMangler:
             conn.do_connect()
             self._conns.append(conn)
 
-    # -----------------------------------------------------------------------
     # Poll our poll() object and do whatever is neccessary. Basically a combination
     # of asyncore.poll2() and asyncore.readwrite(), without all the frippery.
     def poll(self):
@@ -160,7 +144,7 @@ class PostMangler:
         
         self.logger.info('Posting %d article(s)...', len(self._articles))
         
-        while 1:
+        while True:
             now = time.time()
             
             # Poll our sockets for events
@@ -177,7 +161,7 @@ class PostMangler:
                 last_stuff = now
                 
                 for conn in self._conns:
-                	conn.reconnect_check(now)
+                    conn.reconnect_check(now)
                 
                 if self._bytes:
                     interval = time.time() - start
@@ -186,8 +170,12 @@ class PostMangler:
                     print('%d article(s) remaining - %.1fKB/s     \r' % (left, speed))
                     sys.stdout.flush()
             
+            
+            allWorkersIdle = len(self._idle) == self.conf['server']['connections']
+            ArticlesLeft = len(self._articles) != 0
+            
             # All done?
-            if len(self._articles) == 0 and len(self._idle) == self.conf['server']['connections']:
+            if not ArticlesLeft and allWorkersIdle:
                 interval = time.time() - start
                 speed = self._bytes / interval
                 self.logger.info('Posting complete - %s in %s (%s/s)',
@@ -203,7 +191,6 @@ class PostMangler:
             # And sleep for a bit to try and cut CPU chompage
             time.sleep(0.01)
     
-    # -----------------------------------------------------------------------
     # Maybe remember the msgid for later
     def remember_msgid(self, article_size, article):
         if self.conf['posting']['generate_nzbs']:
@@ -220,7 +207,6 @@ class PostMangler:
             #self._msgids[subj].append((article.headers['Message-ID'], article_size))
             self._msgids[subj].append((article, article_size))
     
-    # -----------------------------------------------------------------------
     # Generate the list of articles we need to post
     def generate_article_list(self, postme):
         # "files" mode is just one lot of files
@@ -304,7 +290,6 @@ class PostMangler:
             
             n += 1
     
-    # -----------------------------------------------------------------------
     # Build an article for posting.
     def build_article(self, fileinfo, subject, partnum, begin, end):
         # Read the chunk of data from the file
@@ -335,13 +320,13 @@ class PostMangler:
     # -----------------------------------------------------------------------
     # Generate a .NZB file!
     def generate_nzb(self):
-        filename = 'newsmangler_%s.nzb' % (SafeFilename(self._current_dir))
+        filename = 'newsmangler_%s.nzb' % SafeFilename(self._current_dir)
 
-        self.logger.info('Begin generation of %s', filename)
+        self.logger.debug('Begin generation of %s', filename)
 
         gentime = time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
         root = ET.Element('nzb')
-        root.append(ET.Comment('Generated by newsmangler v%s at %s' % (NM_VERSION, gentime)))
+        root.append( ET.Comment('Generated by newsmangler v%s at %s' % (NM_VERSION, gentime)) )
 
         for subject, msgids in self._msgids.items():
             posttime = msgids.pop(0)
@@ -377,6 +362,6 @@ class PostMangler:
         with open(filename, 'wb') as nzbfile:
             ET.ElementTree(root).write(nzbfile, xml_declaration=True)
 
-        self.logger.info('End generation of %s', filename)
+        self.logger.info('Successfully generated the nzb file %s', filename)
 
 # ---------------------------------------------------------------------------

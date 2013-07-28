@@ -27,17 +27,14 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
-"""Posts stuff."""
-
 import os
 import sys
-
+import logging
 from optparse import OptionParser
 
-from newsmangler.common import ParseConfig
+from newsmangler.common import ParseManglerConfig, setupLogger, NM_VERSION
 from newsmangler.postmangler import PostMangler
 
-# ---------------------------------------------------------------------------
 
 def parseCmdLineOption():
 	# Parse our command line options
@@ -48,20 +45,13 @@ def parseCmdLineOption():
 	)
 	parser.add_option('-f', '--files',
 		dest='files',
-		help='Assume all arguments are filenames instead of directories, \
-			and use SUBJECT as the base subject',
+		help='Assume all arguments are filenames instead of directories, and use SUBJECT as the base subject',
 		metavar='SUBJECT',
 	)
 	parser.add_option('-g', '--group',
 		dest='group',
 		help='Post to a different group than the default',
 	)
-	# parser.add_option('-p', '--par2',
-	# 	dest='generate_par2',
-	# 	action='store_true',
-	# 	default=False,
-	# 	help="Generate PAR2 files in the background if they don't exist already.",
-	# )
 	parser.add_option('-d', '--debug',
 		dest='debug',
 		action='store_true',
@@ -84,60 +74,80 @@ def parseCmdLineOption():
 		
 	return (options, args)
 	
-
-def main():
-	(options, args) = parseCmdLineOption()
+def getPostSources(options, args):
+	logger = logging.getLogger('mangler')
 	
 	# Make sure at least one of the args exists
-	postme = []
-	post_title = None
+	sourcesToPost = []
 	if options.files:
-		post_title = options.files
 		for arg in args:
 			if os.path.isfile(arg):
-				postme.append(arg)
+				sourcesToPost.append(arg)
 			else:
-				print('ERROR: "%s" does not exist or is not a file!' % (arg))
+				logger.error('E: "%s" does not exist or is not a file!' % (arg))
 	else:
 		for arg in args:
 			if os.path.isdir(arg):
-				postme.append(arg)
+				sourcesToPost.append(arg)
 			else:
-				print('ERROR: "%s" does not exist or is not a file!' % (arg))
+				logger.error('E: "%s" does not exist or is not a file!' % (arg))
 	
-	if not postme:
-		print('ERROR: no valid arguments provided on command line!')
+	if not sourcesToPost:
+		logger.error('E: no valid arguments provided on command line!')
 		sys.exit(1)
 	
-	# Parse our configuration file
-	if options.config:
-		conf = ParseConfig(options.config)
-	else:
-		conf = ParseConfig()
+		
+	return sourcesToPost 
+
+def getPostTitle(options, args):
+	postTitle = options.files if options.files else None
+		
+	return postTitle
+
+def getValidNewsgroupName(options, manglerConfDict):
+	from re import sub
+	logger = logging.getLogger('mangler')
 	
 	# Make sure the group is ok
 	if options.group:
 		if '.' not in options.group:
-			newsgroup = conf['aliases'].get(options.group)
+			newsgroup = manglerConfDict['aliases'].get(options.group)
 			if not newsgroup:
-				print('ERROR: group alias "%s" does not exist!' % (options.group))
+				logger.error('Group alias "%s" does not exist!' % (options.group))
 				sys.exit(1)
 		else:
 			newsgroup = options.group
 	else:
-		newsgroup = conf['posting']['default_group']
+		newsgroup = manglerConfDict['posting']['default_group']
 	
 	# Strip whitespace from the newsgroup list to obey RFC1036
-	for c in (' \t'):
-		newsgroup = newsgroup.replace(c, '')
+	newsgroup = sub(r'[\s\t]', '', newsgroup)
+	
+	return newsgroup
+
+def main():
+	(options, args) = parseCmdLineOption()
+	setupLogger(options.debug)
+	
+	logger = logging.getLogger('mangler')
+	logger.info("Welcome to newsMangler v%s" % NM_VERSION)
+	
+	resourceToPost = getPostSources(options, args)
+	post_title = getPostTitle(options, args)
+	
+	# Parse our configuration file
+	DEFAULT_CFG_FILE = '~/.newsmangler.conf'
+	manglerConf = ParseManglerConfig(options.config if options.config else DEFAULT_CFG_FILE)
+	
+	newsgroup = getValidNewsgroupName(options, manglerConf)
 	
 	# And off we go
-	poster = PostMangler(conf, options.debug)
+	poster = PostMangler(manglerConf, options.debug)
 	
 	if options.profile:
 		import hotshot
 		prof = hotshot.Profile('profile.poster')
-		prof.runcall(poster.post, newsgroup, postme, post_title=post_title)
+		prof.runcall(poster.post, newsgroup, resourceToPost, post_title=post_title)
 		prof.close()
 		
 		import hotshot.stats
@@ -147,7 +157,7 @@ def main():
 		stats.print_stats(25)
 	
 	else:
-		poster.post(newsgroup, postme, post_title=post_title)
+		poster.post(newsgroup, resourceToPost, post_title=post_title)
 
 # ---------------------------------------------------------------------------
 

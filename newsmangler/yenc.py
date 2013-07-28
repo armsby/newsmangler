@@ -83,7 +83,10 @@ def yEncode_C(postfile, data):
 	return '%08x' % ((tempcrc ^ -1) & 2**32 - 1)
 
 
-char_to_yenc_byte = lambda char, base=64: ((char + base) % 256).to_bytes(1, byteorder='big')
+ENCODE_NONE		= 0
+ENCODE_BASE64 	= 64
+ENCODE_BASE42 	= 42
+char_to_yenc_byte = lambda char, base: ((char + base) % 256).to_bytes(1, byteorder='big')
 
 
 def _yenc_encodeEscaped(data):
@@ -101,7 +104,7 @@ def _yenc_encodeEscaped(data):
 		
 		charsToBeEscaped = (ord('='), ord('\0'), ord('\n'), ord('\r'))
 		for eachChar in charsToBeEscaped:
-			escapeChar = b'=' + char_to_yenc_byte(eachChar, 64)
+			escapeChar = b'=' + char_to_yenc_byte(eachChar, ENCODE_BASE64)
 			translated = translated.replace((eachChar).to_bytes(1, byteorder='big'), escapeChar)
 	
 	return translated
@@ -120,10 +123,10 @@ def _yenc_splitIntoLines(translated, maxLineLen=128):
 		# FIXME: line consisting entirely of a space/tab
 		if start == end - 1:
 			if line[0] in (ord('\t'), ord(' ')):
-				line = b'=' + char_to_yenc_byte(line[0])
+				line = b'=' + char_to_yenc_byte(line[0], ENCODE_BASE64)
 		else:
 			if line[0] in (ord('\t'), ord(' ')):
-				line = b'=' + char_to_yenc_byte(line[0]) + line[1:-1]
+				line = b'=' + char_to_yenc_byte(line[0], ENCODE_BASE64) + line[1:-1]
 				end -= 1
 			elif line[0] == ord('.'):
 				line = b'.' + line
@@ -132,10 +135,10 @@ def _yenc_splitIntoLines(translated, maxLineLen=128):
 			if endOfLine_byte == ord('='):
 				# escaped char occurrence at the end of the line
 				# add the real char from translated buffer
-				line += char_to_yenc_byte(translated[end],0)
+				line += char_to_yenc_byte(translated[end], ENCODE_NONE)
 				end += 1
 			elif endOfLine_byte in (ord('\t'), ord(' ')):
-				line = line[:-1] + b'=' + char_to_yenc_byte(line[-1])
+				line = line[:-1] + b'=' + char_to_yenc_byte(line[-1], ENCODE_BASE64)
 		
 		# FIXME: doesn't follow the "Command Query Separation" -> separate from function
 		start = end

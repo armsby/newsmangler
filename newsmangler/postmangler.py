@@ -224,10 +224,54 @@ class PostMangler:
     
     # Do the heavy lifting for generate_articleToPost_list
     def _gal_prepare_files(self, postTitle, files, basePath=''):
-        #def 
-        
         article_size = self.conf['posting']['article_size']
+        goodFiles = self.filterGoodFiles(files, basePath)
         
+        # Do stuff with files
+        n = 1
+        for filePath, fileName, fileSize in goodFiles:
+            parts, partial = divmod(fileSize, article_size)
+            if partial:
+                parts += 1
+            
+            self._files[filePath] = FileWrap(filePath, parts)
+
+            # Build a subject
+            real_filename = os.path.split(fileName)[1]
+            
+            filenNumberFormatter = '%%0%sd' % len(str(len(files)))
+            fileNum = filenNumberFormatter % n
+            
+            partCountFormatter = '%%0%sd' % len(str(parts))
+            subject = '%s [%s/%d] - "%s" yEnc (%s/%d)' % (
+                postTitle, fileNum, len(goodFiles), real_filename, partCountFormatter, parts
+            )
+            
+            # Apply a subject prefix
+            if self.conf['posting']['subject_prefix']:
+                subject = '%s %s' % (self.conf['posting']['subject_prefix'], subject)
+            
+            # Now make up our parts
+            fileinfo = {
+                'dirname': postTitle,
+                'filename': real_filename,
+                'filepath': filePath,
+                'filesize': fileSize,
+                'parts': parts,
+            }
+            self.logger.debug("fileInfo: %s" % str(fileinfo))
+            
+            for i in range(parts):
+                partnum = i + 1
+                begin = i * article_size
+                end = min(fileSize, partnum * article_size)
+                
+                article = self._build_article(self._files[filePath], begin, end, fileinfo, subject, partnum)
+                self._articles.append(article)
+            
+            n += 1
+    
+    def filterGoodFiles(self, files, basePath):
         goodFiles = []
         for fileName in files:
             filePath = os.path.abspath(os.path.join(basePath, fileName))
@@ -244,50 +288,7 @@ class PostMangler:
             goodFiles.append((filePath, fileName, fileSize))
         
         goodFiles.sort()
-        
-        # Do stuff with files
-        n = 1
-        for filePath, fileName, fileSize in goodFiles:
-            parts, partial = divmod(fileSize, article_size)
-            if partial:
-                parts += 1
-            
-            self._files[filePath] = FileWrap(filePath, parts)
-
-            # Build a subject
-            real_filename = os.path.split(fileName)[1]
-            
-            temp = '%%0%sd' % len(str(len(files)))
-            filenum = temp % n
-            temp = '%%0%sd' % len(str(parts))
-            subject = '%s [%s/%d] - "%s" yEnc (%s/%d)' % (
-                postTitle, filenum, len(goodFiles), real_filename, temp, parts
-            )
-            
-            # Apply a subject prefix
-            if self.conf['posting']['subject_prefix']:
-                subject = '%s %s' % (self.conf['posting']['subject_prefix'], subject)
-            
-            # Now make up our parts
-            fileinfo = {
-                'dirname': postTitle,
-                'filename': real_filename,
-                'filepath': filePath,
-                'filesize': fileSize,
-                'parts': parts,
-            }
-            
-            self.logger.debug("fileInfo: %s" % str(fileinfo))
-            
-            for i in range(parts):
-                partnum = i + 1
-                begin = i * article_size
-                end = min(fileSize, partnum * article_size)
-                
-                article = self._build_article(self._files[filePath], begin, end, fileinfo, subject, partnum)
-                self._articles.append(article)
-            
-            n += 1
+        return goodFiles
     
     # Build an article for posting.
     def _build_article(self, fileWrapper, begin, end, fileinfo, subject, partnum):

@@ -54,25 +54,23 @@ def setupLogger(debug=False):
 	logHandler.addHandler(streamHandler)
 	
 
-# ---------------------------------------------------------------------------
-# Parse our configuration file
 def ParseManglerConfig(cfgfile='~/.newsmangler.conf'):
 	logger = logging.getLogger('common')
 	
 	configFile = os.path.expanduser(cfgfile)
 	if not os.path.isfile(configFile):
-		logger.error('Config file "%s" is missing!' % (configFile))
-		sys.exit(1)
+		raise IOError('Config file "%s" is missing!' % (configFile))
 	
 	logger.info('Using config file: "%s"' % configFile)
 	
-	c = ConfigParser()
-	c.read(configFile)
+	parser = ConfigParser()
+	parser.read(configFile)
+	
 	manglerConfDict = {}
-	for section in c.sections():
+	for section in parser.sections():
 		manglerConfDict[section] = {}
-		for option in c.options(section):
-			v = c.get(section, option)
+		for option in parser.options(section):
+			v = parser.get(section, option)
 			if v.isdigit():
 				v = int(v)
 			manglerConfDict[section][option] = v

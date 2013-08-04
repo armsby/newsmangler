@@ -106,11 +106,9 @@ class asyncNNTP(asyncore.dispatcher): #TLSAsyncDispatcherMixIn
                 continue
             else:
                 break
-        self.logger.debug('%d: SO_SNDBUF is %s', self.connid, self.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF))
-        
-        # If we have to bind our socket to an IP, do that
-        #if self.bindto is not None:
-        #    self.bind((self.bindto, 0))
+        self.logger.debug('%d: SO_SNDBUF is %s', 
+                          self.connid, 
+                          self.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF))
         
         # Try to connect. This can blow up!
         try:
@@ -183,20 +181,16 @@ class asyncNNTP(asyncore.dispatcher): #TLSAsyncDispatcherMixIn
             if len(self._writebuf) == 0:
                 self.post_data()
     
-    # -----------------------------------------------------------------------
-    # We want buffered output, duh
+    
     def send(self, data):
         self._writebuf += data
         # We need to know about writable things now
         asyncore.poller.register(self._fileno)
         #self.logger.debug('%d has data!', self._fileno)
     
-    # -----------------------------------------------------------------------
     
     def handle_error(self):
         self.logger.exception('%d: unhandled exception!', self.connid)
-    
-    # -----------------------------------------------------------------------
     
     def handle_connect(self):
         self.status = STATE_CONNECTED
@@ -221,13 +215,11 @@ class asyncNNTP(asyncore.dispatcher): #TLSAsyncDispatcherMixIn
     # There is some data waiting to be read
     def handle_read(self):
         try:
-            self._readbuf += self.recv(16384)
+            self._readbuf += self.recv(POST_BUFFER_MIN)
         except socket.error as msg:
             self.really_close(msg)
             return
         
-        
-
         # Split the buffer into lines. Last line is always incomplete/empty.
         lines = str(self._readbuf.decode("utf-8"))
         lines = lines.split('\r\n')

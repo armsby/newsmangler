@@ -66,11 +66,11 @@ class PostMangler:
         # poll, we're going to have to fake it.
         try:
             asyncore.poller = select.poll()
-            self.logger.debug('Using poll() for sockets')
+            self.logger.debug('Using select.poll() for sockets')
         except AttributeError:
             from newsmangler.fakepoll import FakePoll
             asyncore.poller = FakePoll()
-            self.logger.debug('Using FakePoll() for sockets')
+            self.logger.debug('Using FakePoll.poll() for sockets')
 
         self.conf['posting']['skip_filenames'] = self.conf['posting'].get('skip_filenames', '').split()
         
@@ -88,24 +88,27 @@ class PostMangler:
     # Connect all of our connections
     def connect(self):
         for i in range(self.conf['server']['connections']):
-            conn = asyncnntp.asyncNNTP(self, i, 
-            	self.conf['server']['hostname'],
-                self.conf['server']['port'], 
-                None, 
-                self.conf['server']['username'],
-                self.conf['server']['password'],
+            conn = asyncnntp.asyncNNTP(
+                    parent = self, 
+                    connid = i, 
+                    host = self.conf['server']['hostname'],
+                    port = self.conf['server']['port'], 
+                    bindto = None, 
+                    username = self.conf['server']['username'],
+                    password = self.conf['server']['password'],
+                    use_ssl = self.conf['server']['use_ssl']
             )
             conn.do_connect()
             self._conns.append(conn)
 
     # Poll our poll() object and do whatever is neccessary. Basically a combination
     # of asyncore.poll2() and asyncore.readwrite(), without all the frippery.
-    def poll(self):
+    def pollSocketEvents(self):
         results = asyncore.poller.poll(0)
         for fd, flags in results:
             obj = asyncore.socket_map.get(fd)
             if obj is None:
-                self.logger.critical('Invalid FD for poll(): %d', fd)
+                self.logger.critical('Invalid FD for pollSocketEvents(): %d', fd)
                 asyncore.poller.unregister(fd)
                 continue
             
@@ -138,17 +141,16 @@ class PostMangler:
         # Connect!
         self.connect()
 
+        self.logger.info('Posting %d article(s)...', len(self._articles))
+
         # And loop
         self._bytes = 0
         last_stuff = start = time.time()
-        
-        self.logger.info('Posting %d article(s)...', len(self._articles))
-        
         while True:
             now = time.time()
             
             # Poll our sockets for events
-            self.poll()
+            self.pollSocketEvents()
             
             # Possibly post some more parts now
             while self._idle and self._articles:
@@ -170,11 +172,9 @@ class PostMangler:
                     print('%d article(s) remaining - %.1fKB/s     \r' % (left, speed))
                     sys.stdout.flush()
             
-            
+            # All done?            
             allWorkersIdle = len(self._idle) == self.conf['server']['connections']
             ArticlesLeft = len(self._articles) != 0
-            
-            # All done?
             if not ArticlesLeft and allWorkersIdle:
                 interval = time.time() - start
                 speed = self._bytes / interval

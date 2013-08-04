@@ -71,5 +71,3 @@ class FakePoll:
 				results[fd] = select.POLLOUT
 		
 		return results.items()
-
-# ---------------------------------------------------------------------------

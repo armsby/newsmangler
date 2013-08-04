@@ -35,7 +35,7 @@ from optparse import OptionParser
 from newsmangler.common import ParseManglerConfig, setupLogger, NM_VERSION
 from newsmangler.postmangler import PostMangler
 
-
+#class InputDataValidator
 def parseCmdLineOption():
 	# Parse our command line options
 	parser = OptionParser(usage='usage: %prog [options] dir1 dir2 ... dirN')
@@ -84,19 +84,20 @@ def getPostSources(options, args):
 			if os.path.isfile(arg):
 				sourcesToPost.append(arg)
 			else:
-				logger.error('E: "%s" does not exist or is not a file!' % (arg))
+				logger.error('"%s" does not exist or is not a file!' % (arg))
 	else:
+		#it's a folder
 		for arg in args:
 			if os.path.isdir(arg):
 				sourcesToPost.append(arg)
 			else:
-				logger.error('E: "%s" does not exist or is not a file!' % (arg))
+				logger.error('"%s" does not exist or is not a file!' % (arg))
 	
 	if not sourcesToPost:
-		logger.error('E: no valid arguments provided on command line!')
+		logger.error('No valid arguments provided on command line!')
 		sys.exit(1)
 	
-		
+	logger.debug("SourcesToPost: %s" % str(sourcesToPost) )
 	return sourcesToPost 
 
 def getPostTitle(options, args):
@@ -142,7 +143,7 @@ def main():
 	newsgroup = getValidNewsgroupName(options, manglerConf)
 	
 	# And off we go
-	poster = PostMangler(manglerConf, options.debug)
+	poster = PostMangler(manglerConf, debug=options.debug)
 	
 	if options.profile:
 		import hotshot

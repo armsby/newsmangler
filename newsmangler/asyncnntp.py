@@ -34,11 +34,10 @@ import select
 import socket
 import time
 
-SSL_SUPPORT = False
 try:
     import ssl
 except ImportError:
-    pass
+    SSL_SUPPORT = False
 else:
     SSL_SUPPORT = True
 # ---------------------------------------------------------------------------
@@ -61,7 +60,7 @@ MSGID_RE = re.compile(r'(<\S+@\S+>)')
 
 # ---------------------------------------------------------------------------
 
-class asyncNNTP(asyncore.dispatcher): #TLSAsyncDispatcherMixIn
+class AsyncNNTP(asyncore.dispatcher): #TLSAsyncDispatcherMixIn
     def __init__(self, parent, connid, host, port, bindto, username, password, use_ssl):
         asyncore.dispatcher.__init__(self)
         
@@ -92,7 +91,7 @@ class asyncNNTP(asyncore.dispatcher): #TLSAsyncDispatcherMixIn
         # Create the none ssl socket
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         
-        if self.use_ssl:
+        if self.use_ssl and SSL_SUPPORT:
             sock = self.socket
             ssl_sock = ssl.wrap_socket(sock,
                 ca_certs="/etc/ssl/certs/ca-certificates.crt", cert_reqs=ssl.CERT_REQUIRED)

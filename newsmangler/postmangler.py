@@ -28,22 +28,19 @@
 """Main class for posting stuff."""
 
 import asyncore
-import logging
-import os
 import select
-import sys
 import time
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-	# python 3.x
-	from io import StringIO
+# try:
+#     from cStringIO import StringIO
+# except ImportError:
+#     # python 3.x
+#     from io import StringIO
 
 try:
-	import xml.etree.cElementTree as ET
+    import xml.etree.cElementTree as ET
 except:
-	import xml.etree.ElementTree as ET
+    import xml.etree.ElementTree as ET
 
 from newsmangler import asyncnntp
 from newsmangler import yenc
@@ -83,12 +80,12 @@ class PostMangler:
         self.post_title = None
         
         # Some sort of useful logging junk about which yEncode we're using
-        self.logger.info('Using %s module for yEnc', yenc.yEncMode())
+        self.logger.debug('Using %s module for yEnc', yenc.yEncMode())
     
     # Connect all of our connections
     def connect(self):
         for i in range(self.conf['server']['connections']):
-            conn = asyncnntp.asyncNNTP(
+            conn = asyncnntp.AsyncNNTP(
                     parent = self, 
                     connid = i, 
                     host = self.conf['server']['hostname'],
@@ -131,14 +128,13 @@ class PostMangler:
         self.post_title = post_title
         
         # Generate the list of articles we need to post
-        self.generate_article_list(postme)
+        self.generate_articleToPost_list(postme)
         
-        # If we have no valid articles, bail
-        if not self._articles:
+        validArticlesAvailable = bool(self._articles)
+        if not validArticlesAvailable:
             self.logger.warning('No valid articles to post!')
             return
         
-        # Connect!
         self.connect()
 
         self.logger.info('Posting %d article(s)...', len(self._articles))
@@ -169,7 +165,7 @@ class PostMangler:
                     interval = time.time() - start
                     speed = self._bytes / interval / 1024
                     left = len(self._articles) + (len(self._conns) - len(self._idle))
-                    print('%d article(s) remaining - %.1fKB/s     \r' % (left, speed))
+                    sys.stdout.write('%d article(s) remaining - %.1fKB/s     \r' % (left, speed))
                     sys.stdout.flush()
             
             # All done?            
@@ -208,55 +204,64 @@ class PostMangler:
             self._msgids[subj].append((article, article_size))
     
     # Generate the list of articles we need to post
-    def generate_article_list(self, postme):
-        # "files" mode is just one lot of files
+    def generate_articleToPost_list(self, filesToPost):
         if self.post_title:
-            self._gal_files(self.post_title, postme)
-        # "dirs" mode could be a whole bunch
+            # "files" mode is just one lot of files
+            self._gal_prepare_files(
+                    postTitle = self.post_title, 
+                    files = filesToPost)
         else:
-            for dirname in postme:
-                dirname = os.path.abspath(dirname)
-                if dirname:
-                    self._gal_files(os.path.basename(dirname), os.listdir(dirname), basepath=dirname)
+            # "dirs" mode could be a whole bunch
+            for dirName in filesToPost:
+                dirName = os.path.abspath(dirName)
+                if not dirName:
+                    continue
+                
+                self._gal_prepare_files(
+                        postTitle = os.path.basename(dirName), 
+                        files = os.listdir(dirName), 
+                        basePath = dirName)
     
-    # Do the heavy lifting for generate_article_list
-    def _gal_files(self, post_title, files, basepath=''):
+    # Do the heavy lifting for generate_articleToPost_list
+    def _gal_prepare_files(self, postTitle, files, basePath=''):
+        #def 
+        
         article_size = self.conf['posting']['article_size']
         
-        goodfiles = []
-        for filename in files:
-            filepath = os.path.abspath(os.path.join(basepath, filename))
+        goodFiles = []
+        for fileName in files:
+            filePath = os.path.abspath(os.path.join(basePath, fileName))
             
-            # Skip non-files and empty files
-            if not os.path.isfile(filepath):
+            if not os.path.isfile(filePath):
                 continue
-            if filename in self.conf['posting']['skip_filenames'] or filename == '.newsmangler':
+            if fileName in self.conf['posting']['skip_filenames'] or fileName == '.newsmangler':
                 continue
-            filesize = os.path.getsize(filepath)
-            if filesize == 0:
+            fileSize = os.path.getsize(filePath)
+            isFileEmpty = (fileSize == 0)
+            if isFileEmpty:
                 continue
             
-            goodfiles.append((filepath, filename, filesize))
+            goodFiles.append((filePath, fileName, fileSize))
         
-        goodfiles.sort()
+        goodFiles.sort()
         
         # Do stuff with files
         n = 1
-        for filepath, filename, filesize in goodfiles:
-            parts, partial = divmod(filesize, article_size)
+        for filePath, fileName, fileSize in goodFiles:
+            parts, partial = divmod(fileSize, article_size)
             if partial:
                 parts += 1
             
-            self._files[filepath] = FileWrap(filepath, parts)
+            self._files[filePath] = FileWrap(filePath, parts)
 
             # Build a subject
-            real_filename = os.path.split(filename)[1]
+            real_filename = os.path.split(fileName)[1]
             
             temp = '%%0%sd' % len(str(len(files)))
             filenum = temp % n
             temp = '%%0%sd' % len(str(parts))
             subject = '%s [%s/%d] - "%s" yEnc (%s/%d)' % (
-                post_title, filenum, len(goodfiles), real_filename, temp, parts
+                postTitle, filenum, len(goodFiles), real_filename, temp, parts
             )
             
             # Apply a subject prefix
@@ -265,49 +270,29 @@ class PostMangler:
             
             # Now make up our parts
             fileinfo = {
-                'dirname': post_title,
+                'dirname': postTitle,
                 'filename': real_filename,
-                'filepath': filepath,
-                'filesize': filesize,
+                'filepath': filePath,
+                'filesize': fileSize,
                 'parts': parts,
             }
             
+            self.logger.debug("fileInfo: %s" % str(fileinfo))
+            
             for i in range(parts):
                 partnum = i + 1
-                begin = 0 + (i * article_size)
-                end = min(filesize, partnum * article_size)
+                begin = i * article_size
+                end = min(fileSize, partnum * article_size)
                 
-                # Build the article
-                art = Article(self._files[filepath], begin, end, fileinfo, subject, partnum)
-                art.headers['From'] = self.conf['posting']['from']
-                art.headers['Newsgroups'] = self.newsgroup
-                art.headers['Subject'] = subject % (partnum)
-                art.headers['Message-ID'] = '<%.5f.%d@%s>' % (time.time(), partnum, self.conf['server']['hostname'])
-                art.headers['X-Newsposter'] = 'newsmangler %s (%s) - https://github.com/madcowfred/newsmangler\r\n' % (
-                    NM_VERSION, yenc.yEncMode())
-
-                self._articles.append(art)
+                article = self._build_article(self._files[filePath], begin, end, fileinfo, subject, partnum)
+                self._articles.append(article)
             
             n += 1
     
     # Build an article for posting.
-    def build_article(self, fileinfo, subject, partnum, begin, end):
-        # Read the chunk of data from the file
-        #f = self._files.get(fileinfo['filepath'], None)
-        #if f is None:
-        #    self._files[fileinfo['filepath']] = f = open(fileinfo['filepath'], 'rb')
+    def _build_article(self, fileWrapper, begin, end, fileinfo, subject, partnum):
+        art = Article(fileWrapper, begin, end, fileinfo, subject, partnum)
         
-        #begin = f.tell()
-        #data = f.read(self.conf['posting']['article_size'])
-        #end = f.tell()
-        
-        # If that was the last part, close the file and throw it away
-        #if partnum == fileinfo['parts']:
-        #    self._files[fileinfo['filepath']].close()
-        #    del self._files[fileinfo['filepath']]
-        
-        # Make a new article object and set headers
-        art = Article(begin, end, fileinfo, subject, partnum)
         art.headers['From'] = self.conf['posting']['from']
         art.headers['Newsgroups'] = self.newsgroup
         art.headers['Subject'] = subject % (partnum)
@@ -315,7 +300,7 @@ class PostMangler:
         art.headers['X-Newsposter'] = 'newsmangler %s (%s) - https://github.com/madcowfred/newsmangler\r\n' % (
             NM_VERSION, yenc.yEncMode())
 
-        self._articles.append(art)
+        return art
     
     # -----------------------------------------------------------------------
     # Generate a .NZB file!

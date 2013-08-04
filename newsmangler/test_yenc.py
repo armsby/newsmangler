@@ -1,9 +1,7 @@
 import unittest
-#import time
 from sys import version_info
-	
-from yenc import *
-from yenc import _yenc_encodeEscaped, _yenc_splitIntoLines
+
+from yenc import _yenc_encodeEscaped, _yenc_splitIntoLines, yEncode_Python3
 
 class TestYencoding(unittest.TestCase):
 	def setUp(self):

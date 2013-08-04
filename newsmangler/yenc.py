@@ -193,13 +193,6 @@ def yEncMode():
 def CRC32(data):
 	return '%08x' % (zlib.crc32(data) & 2**32 - 1)
 
-# Come up with a 'safe' filename
-def SafeFilename(filename):
-	safe_filename = os.path.basename(filename)
-	for char in [' ', "\\", '|', '/', ':', '*', '?', '<', '>']:
-		safe_filename = safe_filename.replace(char, '_')
-	return safe_filename
-
 # ---------------------------------------------------------------------------
 # Use the _yenc C module if it's available. If not, try to use psyco to speed
 # up part encoding 25-30%.

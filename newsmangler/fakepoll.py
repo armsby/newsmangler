@@ -28,7 +28,6 @@
 "Fake poll() for systems that don't implement it (Windows, most notably)."
 
 import select
-import socket
 
 # Assume that they need constants
 select.POLLIN = 1

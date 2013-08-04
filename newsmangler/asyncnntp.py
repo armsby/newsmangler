@@ -121,22 +121,22 @@ class AsyncNNTP(asyncore.dispatcher): #TLSAsyncDispatcherMixIn
     # -----------------------------------------------------------------------
     # Check to see if it's time to reconnect yet
     def reconnect_check(self, now):
-    	if self.state == STATE_DISCONNECTED and now >= self.reconnect_at:
-        	self.do_connect()
+        if self.state == STATE_DISCONNECTED and now >= self.reconnect_at:
+            self.do_connect()
 
-    def add_channel(self, map=None):
+    def add_channel(self, mapp=None):
         self.logger.debug('%d: adding FD %d to poller', self.connid, self._fileno)
         
-        asyncore.dispatcher.add_channel(self, map)
+        asyncore.dispatcher.add_channel(self, mapp)
 
         # Add ourselves to the poll object
         asyncore.poller.register(self._fileno)
     
-    def del_channel(self, map=None):
+    def del_channel(self, mapp=None):
         self.logger.debug('%d: removing FD %d from poller', self.connid, self._fileno)
 
-        # Remove ourselves from the async map
-        asyncore.dispatcher.del_channel(self, map)
+        # Remove ourselves from the async mapp
+        asyncore.dispatcher.del_channel(self, mapp)
         
         # Remove ourselves from the poll object
         if self._fileno is not None:

@@ -30,7 +30,6 @@
 NM_VERSION = '0.1.3git'
 
 import os
-import sys
 import logging
 
 try:
@@ -54,7 +53,7 @@ def setupLogger(debug=False):
 	logHandler.addHandler(streamHandler)
 	
 
-def ParseManglerConfig(cfgfile='~/.newsmangler.conf'):
+def parseManglerConfig(cfgfile='~/.newsmangler.conf'):
 	logger = logging.getLogger('common')
 	
 	configFile = os.path.expanduser(cfgfile)
@@ -80,7 +79,7 @@ def ParseManglerConfig(cfgfile='~/.newsmangler.conf'):
 
 # ---------------------------------------------------------------------------
 # Come up with a 'safe' filename
-def SafeFilename(filename):
+def safeFilename(filename):
 	safe_filename = os.path.basename(filename)
 	
 	#@todo: replace through re.sub(r'[\s\t]', '', filename)
@@ -91,7 +90,7 @@ def SafeFilename(filename):
 # ---------------------------------------------------------------------------
 # Return a nicely formatted size
 MB = 1024.0 ** 2
-def NiceSize(byteValue):
+def niceFileSize_str(byteValue):
 	if byteValue < 1024:
 		return '%dB' % (byteValue)
 	elif byteValue < MB:
@@ -100,7 +99,7 @@ def NiceSize(byteValue):
 		return '%.1fMB' % (byteValue / MB)
 
 # Return a nicely formatted time
-def NiceTime(seconds):
+def niceTime_str(seconds):
 	hours, left = divmod(seconds, 60 ** 2)
 	mins, secs = divmod(left, 60)
 	if hours:

@@ -30,12 +30,9 @@
 import asyncore
 import select
 import time
-
-# try:
-#     from cStringIO import StringIO
-# except ImportError:
-#     # python 3.x
-#     from io import StringIO
+import sys
+import logging
+import os
 
 try:
     import xml.etree.cElementTree as ET
@@ -45,10 +42,8 @@ except:
 from newsmangler import asyncnntp
 from newsmangler import yenc
 from newsmangler.article import Article
-from newsmangler.common import *
+from newsmangler.common import NM_VERSION, niceFileSize_str, niceTime_str, safeFilename
 from newsmangler.filewrap import FileWrap
-
-# ---------------------------------------------------------------------------
 
 class PostMangler:
     def __init__(self, conf, debug):
@@ -139,7 +134,7 @@ class PostMangler:
 
         self.logger.info('Posting %d article(s)...', len(self._articles))
 
-        # And loop
+        # And post primary loop
         self._bytes = 0
         last_stuff = start = time.time()
         while True:
@@ -162,20 +157,20 @@ class PostMangler:
                     conn.reconnect_check(now)
                 
                 if self._bytes:
-                    interval = time.time() - start
+                    interval = now - start
                     speed = self._bytes / interval / 1024
                     left = len(self._articles) + (len(self._conns) - len(self._idle))
                     sys.stdout.write('%d article(s) remaining - %.1fKB/s     \r' % (left, speed))
                     sys.stdout.flush()
             
             # All done?            
-            allWorkersIdle = len(self._idle) == self.conf['server']['connections']
-            ArticlesLeft = len(self._articles) != 0
+            allWorkersIdle = ( len(self._idle) == self.conf['server']['connections'])
+            ArticlesLeft = ( len(self._articles) != 0 )
             if not ArticlesLeft and allWorkersIdle:
                 interval = time.time() - start
                 speed = self._bytes / interval
                 self.logger.info('Posting complete - %s in %s (%s/s)',
-                    NiceSize(self._bytes), NiceTime(interval), NiceSize(speed))
+                    niceFileSize_str(self._bytes), niceTime_str(interval), niceFileSize_str(speed))
                 
                 # If we have some msgids left over, we might have to generate
                 # a .NZB
@@ -187,7 +182,6 @@ class PostMangler:
             # And sleep for a bit to try and cut CPU chompage
             time.sleep(0.01)
     
-    # Maybe remember the msgid for later
     def remember_msgid(self, article_size, article):
         if self.conf['posting']['generate_nzbs']:
             if self._current_dir != article._fileinfo['dirname']:
@@ -203,7 +197,6 @@ class PostMangler:
             #self._msgids[subj].append((article.headers['Message-ID'], article_size))
             self._msgids[subj].append((article, article_size))
     
-    # Generate the list of articles we need to post
     def generate_articleToPost_list(self, filesToPost):
         if self.post_title:
             # "files" mode is just one lot of files
@@ -225,6 +218,7 @@ class PostMangler:
     # Do the heavy lifting for generate_articleToPost_list
     def _gal_prepare_files(self, postTitle, files, basePath=''):
         article_size = self.conf['posting']['article_size']
+        
         goodFiles = self.filterGoodFiles(files, basePath)
         
         # Do stuff with files
@@ -306,7 +300,7 @@ class PostMangler:
     # -----------------------------------------------------------------------
     # Generate a .NZB file!
     def generate_nzb(self):
-        filename = 'newsmangler_%s.nzb' % SafeFilename(self._current_dir)
+        filename = 'newsmangler_%s.nzb' % safeFilename(self._current_dir)
 
         self.logger.debug('Begin generation of %s', filename)
 

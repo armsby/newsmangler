@@ -32,7 +32,7 @@ import sys
 import logging
 from optparse import OptionParser
 
-from newsmangler.common import ParseManglerConfig, setupLogger, NM_VERSION
+from newsmangler.common import parseManglerConfig, setupLogger, NM_VERSION
 from newsmangler.postmangler import PostMangler
 
 #class InputDataValidator
@@ -138,7 +138,7 @@ def main():
 	
 	# Parse our configuration file
 	DEFAULT_CFG_FILE = '~/.newsmangler.conf'
-	manglerConf = ParseManglerConfig(options.config if options.config else DEFAULT_CFG_FILE)
+	manglerConf = parseManglerConfig(options.config if options.config else DEFAULT_CFG_FILE)
 	
 	newsgroup = getValidNewsgroupName(options, manglerConf)
 	

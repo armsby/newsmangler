@@ -34,6 +34,13 @@ import select
 import socket
 import time
 
+SSL_SUPPORT = False
+try:
+    import ssl
+except ImportError:
+    pass
+else:
+    SSL_SUPPORT = True
 # ---------------------------------------------------------------------------
 
 STATE_DISCONNECTED = 0
@@ -54,8 +61,8 @@ MSGID_RE = re.compile(r'(<\S+@\S+>)')
 
 # ---------------------------------------------------------------------------
 
-class asyncNNTP(asyncore.dispatcher):
-    def __init__(self, parent, connid, host, port, bindto, username, password):
+class asyncNNTP(asyncore.dispatcher): #TLSAsyncDispatcherMixIn
+    def __init__(self, parent, connid, host, port, bindto, username, password, use_ssl):
         asyncore.dispatcher.__init__(self)
         
         self.logger = logging.getLogger('asyncCores')
@@ -67,6 +74,7 @@ class asyncNNTP(asyncore.dispatcher):
         self.bindto = bindto
         self.username = username
         self.password = password
+        self.use_ssl = use_ssl
         
         self.reset()
     
@@ -81,8 +89,14 @@ class asyncNNTP(asyncore.dispatcher):
         self.state = STATE_DISCONNECTED
 
     def do_connect(self):
-        # Create the socket
+        # Create the none ssl socket
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        
+        if self.use_ssl:
+            sock = self.socket
+            ssl_sock = ssl.wrap_socket(sock,
+                ca_certs="/etc/ssl/certs/ca-certificates.crt", cert_reqs=ssl.CERT_REQUIRED)
+        #ssl_sock.connect(('ssl-eu.astraweb.com', 443))
         
         # Try to set our send buffer a bit larger
         for i in range(17, 13, -1):
